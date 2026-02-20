@@ -1,13 +1,26 @@
 // tmdb-proxy-worker.js
 export default {
   async fetch(request) {
+    const allowedDomains = [
+      "https://example1.com",
+      "https://example2.com"
+    ];
+
+    const origin = request.headers.get("Origin") || "";
+
+    if (!allowedDomains.includes(origin)) {
+      return new Response(JSON.stringify({ error: "Unauthorized domain" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
     const url = new URL(request.url);
     const type = url.searchParams.get("type") || "search";
     const query = url.searchParams.get("q") || "";
     const id = url.searchParams.get("id") || "";
 
     const apiKey = "cb192ff121c372a06121e7173f44916c"; // your TMDB key
-
     let tmdbURL = "https://api.themoviedb.org/3/";
 
     if(type === "search") {
@@ -25,12 +38,12 @@ export default {
     const resp = await fetch(tmdbURL);
     const data = await resp.text();
 
-    // ✅ Add CORS headers
+    // ✅ CORS headers for allowed domains only
     return new Response(data, {
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",       // Allow all origins
+        "Access-Control-Allow-Origin": origin,   // Only allow the request origin
         "Access-Control-Allow-Methods": "GET, OPTIONS",
         "Access-Control-Allow-Headers": "*"
       }
