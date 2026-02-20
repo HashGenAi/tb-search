@@ -1,40 +1,49 @@
 addEventListener("fetch", event => {
-  event.respondWith(handleRequest(event))
+  event.respondWith(handleRequest(event.request))
 })
 
-const allowedDomains = ["001test001001.blogspot.com", "example2.com"]; // ← replace with your allowed domains
-const tmdbApiKey = "cb192ff121c372a06121e7173f44916c"; // ← your TMDB API key
+const tmdbApiKey = "cb192ff121c372a06121e7173f44916c";
 
-async function handleRequest(event) {
-  const request = event.request;
-  const origin = request.headers.get("Origin") || "";
-  
-  // Only allow requests from allowed domains
-  if (!allowedDomains.includes(new URL(origin).hostname)) {
-    return new Response("Unauthorized domain", { status: 403 });
-  }
+// List of allowed domains (full subdomains)
+const allowedDomains = [
+  "001test001001.blogspot.com",
+  "example1.com",
+  "example2.com"
+];
 
-  const url = new URL(request.url);
-  const query = url.searchParams.get("query") || "";
-  const endpoint = url.searchParams.get("endpoint") || "search/movie";
-
+async function handleRequest(request) {
   try {
-    // Check cache first
+    const referer = request.headers.get("Referer") || "";
+
+    // ✅ Check if referer contains an allowed domain
+    const allowed = allowedDomains.some(domain => referer.includes(domain));
+    if (!allowed) {
+      return new Response("Unauthorized domain", { status: 403 });
+    }
+
+    const url = new URL(request.url);
+    const endpoint = url.searchParams.get("endpoint") || "search/movie";
+    const query = url.searchParams.get("query") || "";
+
+    // ✅ Optional caching: 1 day
     const cache = caches.default;
     let response = await cache.match(request);
     if (!response) {
-      // Fetch from TMDB
       const apiRes = await fetch(`https://api.themoviedb.org/3/${endpoint}?api_key=${tmdbApiKey}&query=${encodeURIComponent(query)}`);
       const data = await apiRes.json();
+
       response = new Response(JSON.stringify(data), {
         headers: { "Content-Type": "application/json" }
       });
+
       // Cache for 1 day
       response.headers.set("Cache-Control", "max-age=86400");
       event.waitUntil(cache.put(request, response.clone()));
     }
+
     return response;
-  } catch (e) {
-    return new Response("Error: " + e.message, { status: 500 });
+
+  } catch (err) {
+    return new Response("Error: " + err.message, { status: 500 });
   }
 }
