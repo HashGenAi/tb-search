@@ -2,7 +2,7 @@
 export default {
   async fetch(request) {
     const allowedDomains = [
-      "https://example1.com",
+      "https://001test001001.blogspot.com",
       "https://example2.com"
     ];
 
