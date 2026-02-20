@@ -1,49 +1,29 @@
-addEventListener("fetch", event => {
-  event.respondWith(handleRequest(event.request))
-})
-
-const tmdbApiKey = "cb192ff121c372a06121e7173f44916c";
-
-// List of allowed domains (full subdomains)
-const allowedDomains = [
-  "001test001001.blogspot.com",
-  "example1.com",
-  "example2.com"
-];
-
-async function handleRequest(request) {
-  try {
-    const referer = request.headers.get("Referer") || "";
-
-    // ✅ Check if referer contains an allowed domain
-    const allowed = allowedDomains.some(domain => referer.includes(domain));
-    if (!allowed) {
-      return new Response("Unauthorized domain", { status: 403 });
-    }
-
+// tmdb-proxy-worker.js
+export default {
+  async fetch(request) {
     const url = new URL(request.url);
-    const endpoint = url.searchParams.get("endpoint") || "search/movie";
-    const query = url.searchParams.get("query") || "";
+    const type = url.searchParams.get("type") || "search"; // search, details, credits, videos
+    const query = url.searchParams.get("q") || "";
+    const id = url.searchParams.get("id") || "";
 
-    // ✅ Optional caching: 1 day
-    const cache = caches.default;
-    let response = await cache.match(request);
-    if (!response) {
-      const apiRes = await fetch(`https://api.themoviedb.org/3/${endpoint}?api_key=${tmdbApiKey}&query=${encodeURIComponent(query)}`);
-      const data = await apiRes.json();
+    const apiKey = "cb192ff121c372a06121e7173f44916c"; // your TMDB key here
 
-      response = new Response(JSON.stringify(data), {
-        headers: { "Content-Type": "application/json" }
-      });
+    let tmdbURL = "https://api.themoviedb.org/3/";
 
-      // Cache for 1 day
-      response.headers.set("Cache-Control", "max-age=86400");
-      event.waitUntil(cache.put(request, response.clone()));
+    if(type === "search") {
+      tmdbURL += `search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}`;
+    } else if(type === "details" && id) {
+      tmdbURL += `movie/${id}?api_key=${apiKey}`;
+    } else if(type === "credits" && id) {
+      tmdbURL += `movie/${id}/credits?api_key=${apiKey}`;
+    } else if(type === "videos" && id) {
+      tmdbURL += `movie/${id}/videos?api_key=${apiKey}`;
+    } else {
+      return new Response(JSON.stringify([]), {status: 200, headers: {"Content-Type": "application/json"}});
     }
 
-    return response;
-
-  } catch (err) {
-    return new Response("Error: " + err.message, { status: 500 });
+    const resp = await fetch(tmdbURL);
+    const data = await resp.text();
+    return new Response(data, {headers: {"Content-Type": "application/json"}});
   }
 }
