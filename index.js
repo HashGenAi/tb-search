@@ -3,7 +3,7 @@ export default {
   async fetch(request) {
     const allowedDomains = [
       "https://jiorockers.hashgen.website",
-      "https://example2.com"
+      "https://jiorockershg.blogspot.com"
     ];
 
     const origin = request.headers.get("Origin") || "";
