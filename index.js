@@ -2,7 +2,7 @@
 export default {
   async fetch(request) {
     const allowedDomains = [
-      "https://001test001001.blogspot.com",
+      "https://jiorockers.hashgen.website",
       "https://example2.com"
     ];
 
